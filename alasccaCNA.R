@@ -42,6 +42,9 @@ if(is.null(opts$chrsizes)){
 
 ##############################
 
+#Plot settings
+colors_p <- colorRampPalette(c("#6600FF","#9900CC"),space="rgb")
+colors_q <- colorRampPalette(c("#CC0099","#CC0000"),space="rgb")
 
 # setup
 library(data.table)
@@ -53,10 +56,14 @@ setnames(chrsizes, names(chrsizes), c("chr", "size"))
 chrsizes$cumend <- cumsum( as.numeric( chrsizes$size) )
 chrsizes$cumstart <- as.numeric(chrsizes$cumend) - as.numeric(chrsizes$size)
 chrsizes$labelpos <- cumsum( as.numeric(chrsizes$size)) - chrsizes$size/2
-chrsizes$mid=c(1.25e+08, 93300000, 9.1e+07, 50400000, 48400000, 6.1e+07, 59900000,
-	       45600000, 4.9e+07, 40200000, 53700000, 35800000, 17900000, 17600000,
-	       1.9e+07, 36600000, 2.4e+07, 17200000, 26500000, 27500000, 13200000,
-	       14700000, 60600000, 12500000,NA)
+
+mids_chrnames <- c(1:22, 'X', 'Y', 'MT')
+mids_list <- c(1.25e+08, 93300000, 9.1e+07, 50400000, 48400000, 6.1e+07, 59900000,
+               45600000, 4.9e+07, 40200000, 53700000, 35800000, 17900000, 17600000,
+               1.9e+07, 36600000, 2.4e+07, 17200000, 26500000, 27500000, 13200000,
+               14700000, 60600000, 12500000,NA)
+
+chrsizes$mid <- mids_list[match(chrsizes$chr, mids_chrnames)]
 
 g <- data.frame(label=c("ARID1A", "NRAS", "PIK3CA", "APC", "PIK3R1", "BRAF", "MYC", "AR", "PTEN","IGF2", "KRAS", "IRS2", "TP53", "PMS2", "BRCA1", "BRCA2", "MLH1"),
 		chromosome=NA,start=NA,end=NA,stringsAsFactors = F)
@@ -172,16 +179,17 @@ bins$col[bins$gene=='Background']='grey'
 vcf <- readVcf(opts$germlinevcf,genome = "GRCh37")
 g <- geno(vcf)
 chr <- pos <- rownames(g$DP)
-alf <- data.frame(chromosome=NA, start=NA, end=NA, stringsAsFactors = F, cumstart=NA, cumend=NA)
+
+for (i in 1:length(pos)) {
+  temp <- strsplit(chr[i],':')[[1]]
+  chr[i] <- as.character(temp[1])
+  pos[i] <- as.numeric(strsplit(temp[2],'_')[[1]][1])
+}
+pos=as.numeric(pos)
+alf <- data.frame(chromosome=chr, start=pos, end=pos, stringsAsFactors = F, cumstart=NA, cumend=NA)
 
 if( ! all(is.na(alf$chromosome)) ) {
-  for (i in 1:length(pos)) {
-    temp <- strsplit(chr[i],':')[[1]]
-    chr[i] <- as.character(temp[1])
-    pos[i] <- as.numeric(strsplit(temp[2],'_')[[1]][1])
-  }
-  pos=as.numeric(pos)
-  alf <- data.frame(chromosome=chr, start=pos, end=pos, stringsAsFactors = F, cumstart=NA, cumend=NA)
+  
   for(chr in chrsizes$chr){
     idx <- which(alf$chromosome == chr)
     cumchrsize <- chrsizes$cumend[which(chrsizes$chr == chr)] -
@@ -189,6 +197,7 @@ if( ! all(is.na(alf$chromosome)) ) {
     alf$cumstart[idx] <- alf$start[idx] + cumchrsize
     alf$cumend[idx] <- alf$end[idx] + cumchrsize
   }
+  
   alf$t <- as.numeric(g$AO[,2])/as.numeric(g$DP[,2])
   alf$n <- as.numeric(g$AO[,1])/as.numeric(g$DP[,1])
   alf$td <- as.numeric(g$DP[,2])
@@ -282,7 +291,7 @@ size <- 7e6 # size of control regions
 # select PTEN by coordinate instead of by annotation
 #bix <- bins$gene=='PTEN' # PTEN bins
 bix <- bins$chromosome == "10" & bins$end > 89622870 & bins$start < 89731687
-q10 <- bins$chromosome=='10' & bins$start >= chrsizes$mid[10] # all 10q bins
+q10 <- bins$chromosome=='10' & bins$start >= chrsizes$mid[which(chrsizes$chr=='10')] # all 10q bins
 # 10q control left of PTEN:
 left <- q10 & !bix &
   bins$start >= min(bins$start[bix])-marg-size & # start of left control region
@@ -387,9 +396,6 @@ split.screen(as.matrix(data.frame(left=c(rep(0.015,3)),
 				  top=c(0.5,0.55,1))),2)
 split.screen(figs=c(4,6),4)
 
-#Plot settings
-colors_p <- colorRampPalette(c("#6600FF","#9900CC"),space="rgb")
-colors_q <- colorRampPalette(c("#CC0099","#CC0000"),space="rgb")
 
 
 # ____       _   _   _
