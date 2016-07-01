@@ -386,7 +386,7 @@ vcfgz=sort(dir()[grep(pattern = '.vcf.gz',dir())])
   call='NOCALL'
   if (seg.pten.hom.loss|pten.hom.loss) call='HOMLOSS'
   if (pten.loh|pten.loss) call='HETLOSS_or_LOH'
-  CNAlist=list(name='PTEN',call=call)
+  CNAlist=list(name='PTEN', call=call, ENSG='ENSG00000171862', ENST='ENST00000371953')
   exportJson <- toJSON(CNAlist)
   write(exportJson, opts$json)
   
