@@ -54,11 +54,11 @@ library(RJSONIO)
 
 
 
-##Below: for looping.
-cns=sort(dir()[grep(pattern = '.cns',dir())])
-cnr=sort(dir()[grep(pattern = '.cnr',dir())])
-vcfgz=sort(dir()[grep(pattern = '.vcf.gz',dir())])
-#for (sample in 2:length(cnr)) {
+##Below: for Markus' looping/debugging.
+# cns=sort(dir()[grep(pattern = '.cns',dir())])
+# cnr=sort(dir()[grep(pattern = '.cnr',dir())])
+# vcfgz=sort(dir()[grep(pattern = '.vcf.gz',dir())])
+# for (sample in 1:length(cnr)) {
 #   opts <- getopt(args,opt = c("--cnr", paste(getwd(),cnr[sample],sep='/'),
 #                               "--cns", paste(getwd(),cns[sample],sep='/'),
 #                               "--germlinevcf", paste(getwd(),vcfgz[sample*2],sep='/'),
@@ -66,9 +66,9 @@ vcfgz=sort(dir()[grep(pattern = '.vcf.gz',dir())])
 #                               "--png", paste(sample,"plot.png",sep='.'),
 #                               "--json", paste(sample,"json",sep='.'),
 #                               #"--genelist", "ensembl_genes_v75_cleaned.genePred",
-#                               "--chrsizes", "~/ALASCCAdata/human_g1k_v37_decoy.chrsizes.txt") )
+#                               "--chrsizes", "~/human_g1k_v37_decoy.chrsizes.txt") )
   # comment this far to disable loop
-  
+
   chrsizes <- fread(opts$chrsizes)
   setnames(chrsizes, names(chrsizes), c("chr", "size"))
   chrsizes$cumend <- cumsum( as.numeric( chrsizes$size) )
@@ -184,7 +184,7 @@ vcfgz=sort(dir()[grep(pattern = '.vcf.gz',dir())])
   
   
   
-  ### Here cometh germline SNPs
+  ### Here germline SNPs
   vcf <- readVcf(opts$germlinevcf,genome = "GRCh37")
   g <- geno(vcf)
   chr <- pos <- rownames(g$DP)
@@ -234,74 +234,75 @@ vcfgz=sort(dir()[grep(pattern = '.vcf.gz',dir())])
   ## Here be somatic variants!
   vcf2 <- readVcf(opts$somaticvcf,genome = "GRCh37")
   g <- geno(vcf2)
-  chr <- pos <- rownames(g$DP)
-  for (i in 1:length(pos)) {
-    temp <- strsplit(chr[i],':')[[1]]
-    chr[i] <- as.character(temp[1])
-    pos[i] <- as.numeric(strsplit(temp[2],'_')[[1]][1])
-  }
-  pos=as.numeric(pos)
-  salf <- data.frame(chromosome=chr,start=pos,end=pos,stringsAsFactors = F)
-  salf$cumstart <- NA
-  salf$cumend   <- NA
-  for(chr in chrsizes$chr){
-    idx <- which(salf$chromosome == chr)
-    cumchrsize <- chrsizes$cumend[which(chrsizes$chr == chr)] -
-      chrsizes$size[which(chrsizes$chr == chr)]
-    salf$cumstart[idx] <- salf$start[idx] + cumchrsize
-    salf$cumend[idx] <- salf$end[idx] + cumchrsize
-  }
-  
-  salf$t <- as.numeric(g$VD[,1])/as.numeric(g$DP[,1])
-  salf$t.altreads <- as.numeric(g$VD[,1])
-  salf$n <- as.numeric(g$VD[,2])/as.numeric(g$DP[,2])
-  salf$n.totreads <- as.numeric(g$DP[,2])
-  
-  salf$type='other'
-  salf$type[isSNV(vcf2)]='snv'
-  salf$type[isDeletion(vcf2)]='del'
-  salf$type[isInsertion(vcf2)]='ins'
-  
-  salf$gene=''
-  salf$aa=''
-  
-  header=info(header(vcf2))$Description
-  ix=grep('Consequence annotations from Ensembl',header)
-  header=c('N',strsplit(header[ix],'\\|')[[1]])
-  posix=grep('Protein_position',header)
-  aaix=grep('Amino_acids',header)
-  
-  vep=info(vcf2)$CSQ
-  table=NULL
-  
-  alasccaTX=c('ENST00000288602','ENST00000256078','ENST00000369535',
-              'ENST00000371953','ENST00000521381','ENST00000263967')
-  
-  for (i in 1:length(vep)) try( {
-    temp=NULL
-    for (j in 1:length(vep[[i]])) {
-      t2=c(i,strsplit(vep[[i]][j],'\\|')[[1]])
-      tpos=strsplit(t2[posix],'/')[[1]][1]
-      taa=strsplit(t2[aaix],'/')[[1]][2]; if (is.na(taa)) { taa=''; tpos='' }
-      t2=c(t2,paste(tpos, taa,sep=''))
-      temp=rbind(temp,t2)
-      colnames(temp)=header
+  salf <- data.frame(); if (length(g)>0) { # if there are any somatic mutations...
+    chr <- pos <- rownames(g$DP)
+    for (i in 1:length(pos)) {
+      temp <- strsplit(chr[i],':')[[1]]
+      chr[i] <- as.character(temp[1])
+      pos[i] <- as.numeric(strsplit(temp[2],'_')[[1]][1])
     }
-    temp=as.data.frame(temp)
-    genesymbols=unique(temp$SYMBOL); genesymbols=genesymbols[genesymbols!='']
-    salf$gene[i]=paste(genesymbols,collapse=',')
-    aa=unique(temp[temp$Feature %in% alasccaTX,ncol(temp)]); aa=aa[!aa %in% c('NA','-')]
-    salf$aa[i]=paste(aa[aa!=''],collapse = ',')
-    table=rbind(table,temp)
-  }, silent=T)
-
-  keep <- salf$t>0.05 & salf$n<0.05 & salf$t.altreads>3
-  salf <- salf[keep,]
-  salf$pch=rep(0,nrow(salf))
-  salf$pch[salf$type=='snv']=1
-  salf$pch[salf$type=='del']=6
-  salf$pch[salf$type=='ins']=2
-  
+    pos=as.numeric(pos)
+    salf <- data.frame(chromosome=chr,start=pos,end=pos,stringsAsFactors = F)
+    salf$cumstart <- NA
+    salf$cumend   <- NA
+    for(chr in chrsizes$chr){
+      idx <- which(salf$chromosome == chr)
+      cumchrsize <- chrsizes$cumend[which(chrsizes$chr == chr)] -
+        chrsizes$size[which(chrsizes$chr == chr)]
+      salf$cumstart[idx] <- salf$start[idx] + cumchrsize
+      salf$cumend[idx] <- salf$end[idx] + cumchrsize
+    }
+    
+    salf$t <- as.numeric(g$VD[,1])/as.numeric(g$DP[,1])
+    salf$t.altreads <- as.numeric(g$VD[,1])
+    salf$n <- as.numeric(g$VD[,2])/as.numeric(g$DP[,2])
+    salf$n.totreads <- as.numeric(g$DP[,2])
+    
+    salf$type='other'
+    salf$type[isSNV(vcf2)]='snv'
+    salf$type[isDeletion(vcf2)]='del'
+    salf$type[isInsertion(vcf2)]='ins'
+    
+    salf$gene=''
+    salf$aa=''
+    
+    header=info(header(vcf2))$Description
+    ix=grep('Consequence annotations from Ensembl',header)
+    header=c('N',strsplit(header[ix],'\\|')[[1]])
+    posix=grep('Protein_position',header)
+    aaix=grep('Amino_acids',header)
+    
+    vep=info(vcf2)$CSQ
+    table=NULL
+    
+    alasccaTX=c('ENST00000288602','ENST00000256078','ENST00000369535',
+                'ENST00000371953','ENST00000521381','ENST00000263967')
+    
+    for (i in 1:length(vep)) try( {
+      temp=NULL
+      for (j in 1:length(vep[[i]])) {
+        t2=c(i,strsplit(vep[[i]][j],'\\|')[[1]])
+        tpos=strsplit(t2[posix],'/')[[1]][1]
+        taa=strsplit(t2[aaix],'/')[[1]][2]; if (is.na(taa)) { taa=''; tpos='' }
+        t2=c(t2,paste(tpos, taa,sep=''))
+        temp=rbind(temp,t2)
+        colnames(temp)=header
+      }
+      temp=as.data.frame(temp)
+      genesymbols=unique(temp$SYMBOL); genesymbols=genesymbols[genesymbols!='']
+      salf$gene[i]=paste(genesymbols,collapse=',')
+      aa=unique(temp[temp$Feature %in% alasccaTX,ncol(temp)]); aa=aa[!aa %in% c('NA','-')]
+      salf$aa[i]=paste(aa[aa!=''],collapse = ',')
+      table=rbind(table,temp)
+    }, silent=T)
+    
+    keep <- salf$t>0.05 & salf$n<0.05 & salf$t.altreads>3
+    salf <- salf[keep,]
+    salf$pch=rep(0,nrow(salf))
+    salf$pch[salf$type=='snv']=1
+    salf$pch[salf$type=='del']=6
+    salf$pch[salf$type=='ins']=2
+  } #end somatic mutations
   
   ## Process CNA results to file:
   # assemble CNA results first
@@ -321,8 +322,9 @@ vcfgz=sort(dir()[grep(pattern = '.vcf.gz',dir())])
     bins$start >= max(bins$end[bix])+marg & # start of right control region
     bins$end <= max(bins$end[bix])+marg+size # end of right control region
   # Also get the CBS segment(s) for PTEN:
-  #six <- grep('PTEN',segments$gene)
+  # which segments overlap PTEN:
   six <- which(segments$chromosome == "10" & segments$end > 89622870 & segments$start < 89731687)
+  # for each of those (usually one) which bins are inside it:
   sbix <- NULL; for (i in 1:length(six)) sbix[[i]] <- which(q10 & bins$start >= segments$start[six[i]] & bins$end <= segments$end[six[i]])
   
   p.left <- wilcox.test(x = bins$log2[bix],y = bins$log2[left],alternative = 'less')$p.value # p value for del relative to left side control
@@ -337,7 +339,7 @@ vcfgz=sort(dir()[grep(pattern = '.vcf.gz',dir())])
   l.seg <- segments$end[six]-segments$start[six]
   
   # PTEN homozygous deletion reported if:
-  #   Whole PTEN or a small (<5M) PTEN-containing CBS segment is sign. below both left & right controls, with absolute diff at least 0.2 (for 13% drop in DNA, 25% typical purity and delta50%)
+  #   Whole PTEN or a small (<5M) PTEN-containing CBS segment is sign. below both left & right controls, with absolute logratio diff at least 0.2 (for 13% "ratio" drop in DNA, 25% typical purity and delta50%)
   #   Thresholds: 0.001 -> base false positive rate of <1/1000 per control (lower due to two tests). With 5% TP, FDR<<2% as amplitude cutoff is also applied.
   significance.threshold <- 1e-3
   difference.threshold <- -0.2
@@ -346,7 +348,7 @@ vcfgz=sort(dir()[grep(pattern = '.vcf.gz',dir())])
     p.right < significance.threshold &
     m.left < difference.threshold &
     m.right < difference.threshold
-  seg.pten.hom.loss <- FALSE; if (l.seg < 5e6) for (i in 1:length(m.seg)) {
+  seg.pten.hom.loss <- FALSE; if (l.seg < 5e6) for (i in 1:length(l.seg)) {
     seg.pten.hom.loss <-
       seg.pten.hom.loss |
       p.seg.left[i] < significance.threshold &
