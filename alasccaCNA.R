@@ -11,7 +11,8 @@ args <- rbind(c("cnr", "b", 1, "character", "bin file from CNVkit"),
               c("germlinevcf", "g", 1, "character", "germline variant vcf file"),
               c("somaticvcf", "m", 1, "character", "somatic variant vcf file"),
               c("png", "p", 1, "character", "output png file"),
-              c("json", "o", 1, "character", "output json file"),
+              c("json.cna", "o", 1, "character", "CNA output json file"),
+              c("json.purity", "t", 1, "character", "purity output json file"),
               #c("genes.genePred", "g", 1, "character", "ensemble genePred file"),
               c("chrsizes", "c", 1, "character", "chromosome sizes file"))
 
@@ -33,8 +34,11 @@ if(is.null(opts$somaticvcf)){
 if(is.null(opts$png)){
   stop("Must specify output png file name --png/-p.")
 }
-if(is.null(opts$json)){
-  stop("Must specify output json file name --json/-o")
+if(is.null(opts$json.cna)){
+  stop("Must specify output CNA json file name --json.cna/-o")
+}
+if(is.null(opts$json.purity)){
+  stop("Must specify output purity json file name --json.purity/-t")
 }
 if(is.null(opts$chrsizes)){
   stop("Must specify chrsizes file --chrsizes/-c.")
@@ -50,25 +54,24 @@ library(RJSONIO)
 
 
 
-
-
-
-
-##Below: for Markus' looping/debugging.
-# cns=sort(dir()[grep(pattern = '.cns',dir())])
-# cnr=sort(dir()[grep(pattern = '.cnr',dir())])
-# vcfgz=sort(dir()[grep(pattern = '.vcf.gz',dir())])
-# for (sample in 1:length(cnr)) {
-#   opts <- getopt(args,opt = c("--cnr", paste(getwd(),cnr[sample],sep='/'),
-#                               "--cns", paste(getwd(),cns[sample],sep='/'),
-#                               "--germlinevcf", paste(getwd(),vcfgz[sample*2],sep='/'),
-#                               "--somaticvcf", paste(getwd(),vcfgz[sample*2-1],sep='/'),
-#                               "--png", paste(sample,"plot.png",sep='.'),
-#                               "--json", paste(sample,"json",sep='.'),
-#                               #"--genelist", "ensembl_genes_v75_cleaned.genePred",
+##Below: for Markus looping/debugging.
+# setwd('~/ALASCCAdata/testSamples')
+# dirs=dir(recursive = F,pattern = 'AL-P-000')
+# sampleData=data.table(n=NA,dirs,tcov=NA,ncov=NA,snps=NA,muts=NA,snvmuts=NA,maf=NA,pik3ca=NA,pik3r1=NA,pten=NA,ptenloss=NA)
+# for (sample in 1:length(dirs)) {
+#   files=dir(path = dirs[sample],full.names = T,recursive = T)
+#   n=rev(strsplit(dirs[sample],'_')[[1]])[1]
+#   sampleData$n[sample]=n
+#   opts <- getopt(args,opt = c("--cnr", files[grep(pattern = '.cnr',x = files)],
+#                               "--cns", files[grep(pattern = '.cns',x = files)][1],
+#                               "--germlinevcf", files[grep(pattern = '.germline.vcf.gz',x = files)][4],
+#                               "--somaticvcf", files[grep(pattern = '.vardict-somatic.vep.vcf.gz',x = files)][1],
+#                               "--png", paste(n,"plot.png",sep='.'),
+#                               "--json.cna", paste('json.cna',n,"json",sep='.'),
+#                               "--json.purity", paste('json.purity',n,"json",sep='.'),
 #                               "--chrsizes", "~/human_g1k_v37_decoy.chrsizes.txt") )
-  # comment this far to disable loop
-
+#   # comment this far to disable this development loop, + last few lines of script.
+  
   chrsizes <- fread(opts$chrsizes)
   setnames(chrsizes, names(chrsizes), c("chr", "size"))
   chrsizes$cumend <- cumsum( as.numeric( chrsizes$size) )
@@ -83,26 +86,28 @@ library(RJSONIO)
   
   chrsizes$mid <- mids_list[match(chrsizes$chr, mids_chrnames)]
   
-  g <- data.frame(label=c("ARID1A", "NRAS", "PIK3CA", "APC", "PIK3R1", "BRAF", "MYC", "AR", "PTEN","IGF2", "KRAS", "IRS2", "TP53", "PMS2", "BRCA1", "BRCA2", "MLH1"),
-                  chromosome=NA,start=NA,end=NA,stringsAsFactors = F)
+  # load('~/Dropbox/refseq.genes.Rdata')
+  # genes=data.frame(label=as.character(refseq.genelist$name2),chromosome=substr(refseq.genelist$chrom,4,6),start=refseq.genelist$txStart,end=refseq.genelist$txEnd,stringsAsFactors = F)
+  # genes=genes[order(genes$label),]
+  # genes=genes[genes$label %in% c('BRAF','KRAS','NRAS','PIK3CA','PIK3R1','PTEN','IGF2','APC','SMAD4','TP53','FBXW7','TCF7L2','ARID1A'),]
+  # d=genes$label[-1]==rev(rev(genes$label)[-1])
+  # genes=genes[c(T,!d),]
+  # genes$cumstart <- genes$start + chrsizes$cumstart[match(genes$chromosome,chrsizes$chr)]
+  # genes$cumend <- genes$end + chrsizes$cumstart[match(genes$chromosome,chrsizes$chr)]
   
-  genes=structure(list(label = c("ARID1A", "NRAS", "PIK3CA", "APC", "PIK3R1",
-                                 "BRAF", "MYC", "AR", "PTEN", "IGF2", "KRAS", "IRS2", "TP53",
-                                 "PMS2", "BRCA1", "BRCA2", "MLH1"), chromosome = c("1", "1", "3",
-                                                                                   "5", "5", "7", "8", "X", "10", "11", "12", "13", "17", "7", "17",
-                                                                                   "13", "3"), start = c(27022521L, 115247084L, 178866310L, 112043201L,
-                                                                                                         67584251L, 140433812L, 128748314L, 66763873L, 89623194L, 2150346L,
-                                                                                                         25358179L, 110406183L, 7571719L, 6012869L, 41196311L, 32889616L,
-                                                                                                         37034840L), end = c(27108601L, 115259515L, 178952497L, 112181936L,
-                                                                                                                             67597649L, 140624564L, 128753680L, 66950461L, 89728532L, 2160204L,
-                                                                                                                             25403854L, 110438914L, 7590868L, 6048737L, 41277468L, 32973809L,
-                                                                                                                             37092337L)), .Names = c("label", "chromosome", "start", "end"
-                                                                                                                             ), row.names = c(NA, -17L), class = "data.frame")
-  genes=genes[genes$label %in% c('BRAF','KRAS','NRAS','PIK3CA','PIK3R1','PTEN','IGF2'),]
-  
-  genes$cumstart <- genes$start + chrsizes$cumstart[match(genes$chromosome,chrsizes$chr)]
-  genes$cumend <- genes$end + chrsizes$cumstart[match(genes$chromosome,chrsizes$chr)]
-  #genes=genes[genes$label %in% c('PTEN','IGF2'),]
+  genes=structure(list(label = c("APC", "ARID1A", "BRAF", "FBXW7", "IGF2", 
+                                 "KRAS", "NRAS", "PIK3CA", "PIK3R1", "PTEN", "SMAD4", "TCF7L2", 
+                                 "TP53"), chromosome = c("5", "1", "7", "4", "11", "12", "1", 
+                                                         "3", "5", "10", "18", "10", "17"), 
+                       start = c(112043201L, 27022521L, 140433812L, 153332311L, 2150346L, 25358179L, 115247084L, 178866310L, 67584251L, 89623194L, 48556582L, 114710008L, 7571719L), 
+                       end = c(112181936L, 27108601L, 140624564L, 153456393L, 2160204L, 25403854L, 115259515L, 178952497L, 67597649L, 89728532L, 48611411L, 114927436L, 7590868L), 
+                       cumstart = c(993669901, 27022521, 1374090839, 843804735, 1818058236, 1976272585, 115247084, 671316304, 949210951, 1769996337, 2629923656, 1795083151, 2507743583), 
+                       cumend = c(993808636, 27108601, 1374281591, 843928817, 1818068094, 1976318260, 115259515, 671402491, 949224349, 1770101675, 2629978485, 1795300579, 2507762732)), 
+                  .Names = c("label","chromosome", "start", "end", "cumstart", "cumend"), 
+                  row.names = c(11203L, 1777L, 14795L, 9757L, 24708L, 27510L, 2723L, 7658L, 11731L, 22654L, 
+                                36673L, 22765L, 34523L), class = "data.frame")
+  genes$color='#000000CC'; genes$color[genes$label %in% c('BRAF','KRAS','NRAS','PIK3CA','PTEN','PIK3R1')]='#0000C0CC'
+
   pten=structure(list(start = c(89623194, 89623861, 89653781, 89685269,
                                 89690802, 89692769, 89711874, 89717609, 89720650, 89725043),
                       end = c(89623860, 89624305, 89653866, 89685314, 89690846,
@@ -151,17 +156,17 @@ library(RJSONIO)
   }
   bins$centerpos <- bins$cumstart+(bins$cumend-bins$cumstart)/2
   
-  ## Antitarget bins can be awfully low. Reduce their weight:   <-------------------- or remove?
+  ## Antitarget bins can be awfully low. Reduce their weight:   <-------------------- currently median is used instead
   ix=bins$gene=='Background'
-  low=bins$log2 < -5
-  bins$weight[ix&low] <- 0.01
+  #low=bins$log2 < -5
+  bins$weight[ix] <- 0.01
   
   
   # Segment value correction
   bins$segmented <- NA
   for (i in 1:nrow(segments)) {
     ix=bins$chromosome==segments$chromosome[i] & bins$start>=segments$start[i] & bins$end<=segments$end[i]
-    s=weighted.mean(x = bins$log2[ix],w = bins$weight[ix])
+    s=median(x = bins$log2[ix])#,w = bins$weight[ix])
     bins$segmented[ix] <- segments$log2[i] <- s
   }
   # Baseline correction
@@ -188,16 +193,20 @@ library(RJSONIO)
   vcf <- readVcf(opts$germlinevcf,genome = "GRCh37")
   g <- geno(vcf)
   chr <- pos <- rownames(g$DP)
+  alf=NULL
   
-  for (i in 1:length(pos)) {
-    temp <- strsplit(chr[i],':')[[1]]
-    chr[i] <- as.character(temp[1])
-    pos[i] <- as.numeric(strsplit(temp[2],'_')[[1]][1])
+  if (length(pos)>0) { 
+    for (i in 1:length(pos)) {
+      temp <- strsplit(chr[i],':')[[1]]
+      chr[i] <- as.character(temp[1])
+      pos[i] <- as.numeric(strsplit(temp[2],'_')[[1]][1])
+    }
+    pos=as.numeric(pos)
+    alf <- data.frame(chromosome=chr, start=pos, end=pos, stringsAsFactors = F, cumstart=NA, cumend=NA)
   }
-  pos=as.numeric(pos)
-  alf <- data.frame(chromosome=chr, start=pos, end=pos, stringsAsFactors = F, cumstart=NA, cumend=NA)
   
-  if( ! all(is.na(alf$chromosome)) ) {
+  
+  if (!is.null(alf)) if( ! all(is.na(alf$chromosome)) ) {
     
     for(chr in chrsizes$chr){
       idx <- which(alf$chromosome == chr)
@@ -210,12 +219,22 @@ library(RJSONIO)
     alf$t <- as.numeric(g$AO[,2])/as.numeric(g$DP[,2])
     alf$n <- as.numeric(g$AO[,1])/as.numeric(g$DP[,1])
     alf$td <- as.numeric(g$DP[,2])
+    alf$nd <- as.numeric(g$DP[,1])
     alf$log2 <- NA
-    delta <- 2e6; for (i in 1:nrow(alf)) {
+    delta <- 3e6; for (i in 1:nrow(alf)) {
       ix <- bins$chromosome==alf$chromosome[i] & bins$start>alf$start[i]-delta & bins$end<alf$start[i]+delta
       alf$log2[i]=median(bins$log2[ix],na.rm=T)
     }
     alf$ai=2*abs(alf$t-0.5)
+    
+    # Prepare smoothed AI
+    ai=alf$ai
+    smoothedAi=ai
+    for (i in 1:length(ai)) {
+      s=max(1,i-5); e=min(i+5,length(ai))
+      smoothedAi[i]=median(ai[s:e])
+    }
+    
     alf$col=NA
     for (i in 1:24) {
       ix=which(alf$chromosome==chrsizes$chr[i] & alf$start<chrsizes$mid[i])
@@ -231,7 +250,7 @@ library(RJSONIO)
   }
   
   
-  ## Here be somatic variants!
+  ## Somatic variants
   vcf2 <- readVcf(opts$somaticvcf,genome = "GRCh37")
   g <- geno(vcf2)
   salf <- data.frame(); if (length(g)>0) { # if there are any somatic mutations...
@@ -255,6 +274,7 @@ library(RJSONIO)
     
     salf$t <- as.numeric(g$VD[,1])/as.numeric(g$DP[,1])
     salf$t.altreads <- as.numeric(g$VD[,1])
+    salf$t.totreads <- as.numeric(g$DP[,1])
     salf$n <- as.numeric(g$VD[,2])/as.numeric(g$DP[,2])
     salf$n.totreads <- as.numeric(g$DP[,2])
     
@@ -296,8 +316,8 @@ library(RJSONIO)
       table=rbind(table,temp)
     }, silent=T)
     
-    keep <- salf$t>0.05 & salf$n<0.05 & salf$t.altreads>3
-    salf <- salf[keep,]
+    #keep <- salf$t>0.05 & salf$n<0.05 & salf$t.altreads>3
+    # salf <- salf[keep,]
     salf$pch=rep(0,nrow(salf))
     salf$pch[salf$type=='snv']=1
     salf$pch[salf$type=='del']=6
@@ -366,10 +386,11 @@ library(RJSONIO)
   pten.loh <- FALSE
   pten.loss <- FALSE
   
-  # If there's no SNP data, cowardly refuse to call pten loh or loss
-  if (any(!is.na(alf$chromosome))){
+  # If there's no SNP data, refuse to call pten loh or loss
+  if (!is.null(alf)){
+    # Call LOH if 
     pten.loh <-
-      m.pten < 0.1 & (
+      m.pten < 0.15 & (
         median(snps.near$ai,na.rm = T) > 0.5 |
           median(snps.ptenseg$ai,na.rm = T) > 0.5
       )
@@ -384,13 +405,30 @@ library(RJSONIO)
   if (is.na(pten.loss)) pten.loss=FALSE
   if (is.na(pten.loh)) pten.loh=FALSE
   
+  ptencall='NOCALL'
+  if (seg.pten.hom.loss|pten.hom.loss) ptencall='HOMLOSS'
+  if (pten.loh|pten.loss) ptencall='HETLOSS_or_LOH'
+  CNAlist=list(name='PTEN', call=ptencall, ENSG='ENSG00000171862', ENST='ENST00000371953')
+  
   # write to JSON
-  call='NOCALL'
-  if (seg.pten.hom.loss|pten.hom.loss) call='HOMLOSS'
-  if (pten.loh|pten.loss) call='HETLOSS_or_LOH'
-  CNAlist=list(name='PTEN', call=call, ENSG='ENSG00000171862', ENST='ENST00000371953')
-  exportJson <- toJSON(CNAlist)
-  write(exportJson, opts$json)
+  exportJson <- toJSON(CNAlist) #<--------- This json is only CNA 
+  write(exportJson, opts$json.cna)
+  
+  # purity estimates
+  af=salf$t
+  # male X/Y mutations come at higher AF. Exclude from calc:
+  if (sum(alf$chromosome %in% c('X','Y'))<50) af=af[!salf$chromosome %in% c('X','Y')]
+  
+  call='LOW'; if (length(af)>=3) if (median(af)>=0.15) call='OK'
+  purity=list(
+    somatic.mutations=length(af),
+    median.allelefreq=median(af),
+    purity.call=call
+  )
+  
+  # write to JSON
+  exportJson <- toJSON(purity) #<--------- This json is only purity
+  write(exportJson, opts$json.purity)
   
   
   
@@ -438,18 +476,21 @@ library(RJSONIO)
   name=strsplit(name,'-panel')[[1]][1]
   mtext(name,3,padj=-4.5)
   ix=bins$gene=='Background'
+  snpcov='NA'
+  if (!is.null(alf)) if (nrow(alf)>0) 
+    snpcov=paste(round(median(alf$td)),round(median(alf$nd)),sep='/')
   mapd1=round(median(abs(diff(bins$log2[!ix]))),2)
   mapd2=round(median(abs(diff(bins$log2[ix]))),2)
   readRatio=mapd2^2/mapd1^2; seqRatio=readRatio/4; ontar=round(100*seqRatio/(seqRatio+1))
-  simplePur=round(100*mean(salf$t))
+  simplePur=round(100*median(af))
   tar=round(median(bins$log2[bins$gene!='Background']),2)
   atar=round(median(bins$log2[bins$gene=='Background']),2)
   mtext(paste(format(Sys.time(), "%F %H:%M:%S"),'',
-              '  SNPcov:',median(alf$td),
+              '  SNPcov:',snpcov,
               '  MAPD:',paste(mapd1,mapd2,sep='/'),
               #'  medians:',paste(tar,atar,sep='/'),
-              '  Ontarget:',paste(ontar,'%',sep=''),
-              '  MeanSomatcAlleleFr:',paste(simplePur,'%',sep='')),
+              #'  Ontarget:',paste(ontar,'%',sep=''),
+              '  Median Somatic AF:',paste(simplePur,'%',sep='')),
         3,padj=-4.5,adj=1,cex=0.75)
   
   cex.axis <- .6
@@ -577,7 +618,7 @@ library(RJSONIO)
   screen(4)
   par(mar=c(0,0,0,0))
   plot(1,type='n',axes=F,xlab='',ylab='')
-  mtext('Log ratio',1,padj=text1padj,cex=cex.text)
+  mtext('DNA ratio',1,padj=text1padj,cex=cex.text)
   mtext('Allelic imablance',2,padj=-3,cex=cex.text)
   
   for (c in 1:24)
@@ -587,18 +628,22 @@ library(RJSONIO)
     par(mar = c(0, 0, 0, 0))
     par(oma = c(0,0,0,0))
     par(mgp =c(1,0.5,0))
-    xlim=c(-1.1,1.1)
+    #xlim=c(-1.1,1.1)
+    xlim=c(0.3,2.1)
     ylim=c(0,1)
     ix <- alf$chromosome %in% c(chrsizes[c]$chr,'X','Y')
     ixCurChr <-  alf$chromosome %in% chrsizes[c]$chr
-    plot(alf$log2[!ix],alf$ai[!ix],xlim=xlim,ylim=ylim,lwd=lwd,axes=F,ylab='',xlab='',pch=16,
+    plot(2^alf$log2[!ix],smoothedAi[!ix],xlim=xlim,ylim=ylim,lwd=lwd,axes=F,ylab='',xlab='',pch=16,
          col='#B0B0B030',cex=cex)
-    points(alf$log2[ixCurChr],alf$ai[ixCurChr],col='#00800070',pch=16,cex=cex)
+    points(2^alf$log2[ixCurChr],smoothedAi[ixCurChr],col='#00800070',pch=16,cex=cex)
     
-    d=density(bins$smoothed[bins$chromosome %in% as.numeric(1:22)])
-    if (c==24) points(d$x,d$y/max(d$y),type='l')
     
-    whole=log2(c(0.5,1,1.5,2))
+    if (c==24 & !is.null(alf)) {
+      d=density(2^alf$log2[alf$chromosome %in% as.numeric(1:22)])
+      points(d$x,d$y/max(d$y),type='l')
+    }
+    
+    whole=(c(0.5,1,1.5,2))
     
     segments(
       x0=whole,x1=whole,
@@ -607,7 +652,7 @@ library(RJSONIO)
       lwd=1)
     
     segments(
-      x0=c(-2),x1=c(2),
+      x0=c(-2),x1=c(5),
       y0=c(1/3,1/2),y1=c(1/3,1/2),
       col='#D3D3D360',
       lwd=1)
@@ -623,16 +668,16 @@ library(RJSONIO)
       mtext(c, side = 3, line = -1, adj = 0.92, cex = 1)
     }
     
-    if(c %in% 19:24) axis(side=1,cex.axis=0.5,at=seq(-1,1,.5),tck=-0.05,padj=-1.6,#las=3,
-                          #labels=c('-50%','0','+50%','+100%'),
+    if(c %in% 19:24) axis(side=1,cex.axis=0.5,at=c(0.5,1,1.5,2),tck=-0.05,padj=-1.6,#las=3,
+                          labels=c('-50%','±0','+50%','+100%'),
                           col='white',col.ticks='black',lend=1)
     if(c %in% c(1,7,13,19)) axis(side=2,cex.axis=0.6,tck=-0.05,
                                  at=c(1/3,1/2),
-                                 labels=c('1:2','1:3'),
+                                 labels=c('2:1','3:1'),
                                  las=1,col='white',col.ticks='black',lend=1)
     if(c %in% c(6,12,18,24)) axis(side=4,cex.axis=0.6,tck=-0.05,
                                   at=c(1/3,1/2),
-                                  labels=c('1:2','1:3'),
+                                  labels=c('2:1','3:1'),
                                   las=1,col='white',col.ticks='black',lend=1)
     
     box(lwd=1)
@@ -838,10 +883,24 @@ library(RJSONIO)
   #Close all the opened split.screens and release the figure
   
   close.screen(all.screens=T)
-  
-  
-  
   dev.off()
   
-  
-# } #used for loops
+  #below: used only for loops, remove in production setting
+#   if (!is.null(alf)) {
+#     sampleData$tcov[sample]=round(median(alf$td))
+#     sampleData$ncov[sample]=round(median(alf$nd))
+#     sampleData$snps[sample]=nrow(alf)
+#     sampleData$muts[sample]=nrow(salf)
+#   }
+#   sampleData$snvmuts[sample]=sum(salf$type=='snv')
+#   if (nrow(salf)>0) sampleData$maf[sample]=round(median(salf$t),3)
+#   sampleData$pik3ca[sample]=paste(salf$aa[grep(pattern = 'PIK3CA',x = salf$gene)],collapse=',')  
+#   sampleData$pik3r1[sample]=paste(salf$aa[grep(pattern = 'PIK3R1',x = salf$gene)],collapse=',')  
+#   sampleData$pten[sample]=paste(salf$aa[grep(pattern = 'PTEN',x = salf$gene)],collapse=',')  
+#   sampleData$ptenloss[sample]=ptencall
+#   
+#   rm(alf)
+#   rm(salf)
+#   rm(bins)
+#   rm(segments)
+# } #comment this far
