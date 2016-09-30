@@ -1,0 +1,23 @@
+package:
+  name: autoseq-scripts
+  version: '1.0'
+
+source:
+  path: ../
+
+build:
+  number: 0
+  skip: False
+
+requirements:
+  run:
+    - python
+
+test:
+  commands:
+    - echo -e "1\t1\t1" | bed_to_regions.py
+
+about:
+  home: https://github.com/dakl/autoseq-scripts
+  license: MIT
+  summary: Helper scripts for autoseq-scripts
