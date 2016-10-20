@@ -1,30 +1,25 @@
 language: python
-
 python:
-  - 2.7
-
+- 2.7
 before_install:
-  - echo "127.0.1.1 "`hostname` | sudo tee /etc/hosts
-  - CONDA_INST=$HOME/miniconda2
-  - echo -n "Downloading conda... "
-  - wget http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh
-  - echo "Done!"
-  - bash Miniconda-latest-Linux-x86_64.sh -b -p $CONDA_INST -f
-  - export PATH=$CONDA_INST/bin:$PATH
-  - conda config --set always_yes yes --set changeps1 no
-  - conda info -a
-  - conda install conda-build anaconda-client
-
+- echo "127.0.1.1 "`hostname` | sudo tee /etc/hosts
+- CONDA_INST=$HOME/miniconda2
+- echo -n "Downloading conda... "
+- wget http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh
+- echo "Done!"
+- bash Miniconda-latest-Linux-x86_64.sh -b -p $CONDA_INST -f
+- export PATH=$CONDA_INST/bin:$PATH
+- conda config --set always_yes yes --set changeps1 no
+- conda info -a
+- conda install conda-build anaconda-client
 script:
-  - echo -e "1\t1\t1" | python bed_to_regions.py
-
+- echo -e "1\t1\t1" | python bed_to_regions.py
 after_success:
-  - conda config --set anaconda_upload no
-  - anaconda login --username $ANACONDA_USER --password $ANACONDA_PWD
-  - conda build recipe/
-  - anaconda upload --force ~/miniconda2/conda-bld/linux-64/autoseq-scripts-1.0-py27_0.tar.bz2
-
+- conda config --set anaconda_upload no
+- anaconda login --username $ANACONDA_USER --password $ANACONDA_PWD
+- conda build recipe/
+- anaconda upload --force ~/miniconda2/conda-bld/linux-64/autoseq-scripts-1.0-py27_0.tar.bz2
 env:
   global:
-  - secure: KFehgz3hWOc+MzKrrIwWEUAqG0HgbRkCU60SgBrUm0BXl4uXvy1eXGyANsn1eLZ8tyVy5tEpqra8F6UHQkyrDUkkRA+WOy5kCDeOBDlX9ugd7tbba0qet27nx58p3c5uiHcCS0zrRkE0rDNsLjVzA6b8BANQHbo7MnZR+gAmcTCqY/JPHWYszv/ocH2+Pdh9UsZRE6axjHqQdy61I3BNK+0t44pgUZvQnQRR2w7exYxaIdHrS3u8jopveYu/0o7uqW7VGeCiYHRlamgfcliUZTfh38nD6LWd83au7XfBZFQKg3M9MLQLSexy3jR2es0o9sjkgTMTEYFjZufpSA00+A72waVafwycm278Gm5YLPT0cgHts/Wk1MIc6Zrjq9vc+8OkEEkL/Lbxdbg1jY+Rsg0q2DSgpMbfcGdyoSW1gBBjS8gwx5vDF0GahQ5ZC8tkcY6zpRd8mjW3zmQCMyUxETDjgeFyjHsBZeBdbaiEpY1ybdGOf+dAINeBUJf5L8IF7XMTCnKytlMmyssCuzuN1MMEXVyVSQPl8KziXdu4S/YM2bMtf8Qhbvcr10REhwPUFXG6m6QO3ErtSTC8/Qi9uCCcca3xMa78raBHVosveL9/atwrr8V/58KuiwOuzjl9HKuL1eQ0vt3RDxNLTDukxTpne0oA54WBYJ/BevXezlU=
-  - secure: C/34Hrc2vGAVYLJw0NfumXDDSsLoFK2QJopaOs4XavfQVm2ygc4rIl904rvbp17kp6T8j4DNsNmV9EXXzffw/U4TFpddAQzXPQJGchlaIhyrBtyQbAsCeL0rm/wgd52O8Mi2EEDrft5+xYHbVlrLdwLfy4flMhWJQAilpw6mMA13i99jihh9mIqP52Azq12lOmI9qxRQPJ8JTf7L6edYN+l7kf88o3376y8f+6C4w/SocBwKq05akL/gJaWL2zaaT5BZBkDydsuArt5mCJEp0Z6/bLO01HJsfmLT18Bfhz7G1bZ9t/ndm1U0x4FadMPnXg48ynU0Zt2pEMQbIU9azGlP7nTgvCr3zXvf+9BLsuNqicUqxylZa3ph1CW7/U3I2C/jjh/ltU+2lC6UtVrwy/ubHGHYjVqrOpP/EZd/+8SeJWyotiUMaj4zB4Q+E3IssIV5JJk3y7ShM9sHT/+WCIsPvOxaFX7g7IjX7hW8CVVmPWMeqWRp3FfT0PieOho+gO8F4eDGT93t8H8RUlPVP/7ZrwNZCPClay9wy/wA2XLGR6OPa8Wl6y74XejJCOtN2o7wShiMTiGPLQq+LUK2HFjccDWRPvEV3ouWEhbk+lxcA1rFWZA/odBCdIbNljoqwYJYufsifv5sXsNXrRv4u9+YlMnhb0fxnJBazyefgrg=
+  - secure: AYZoIIbekW1asvMxaQzHrwdGnmqu2O86+ENk4T88VKA4+4rVzv/XY+i75rQpewyID6zteUXPi4jtOZp0/ZPRKL05HQ/QIT44x0Stym/riqj2nP+CH2R5mPtXAktcZ6b1tLFjjvI0FBI7kfOJlJHIARYpVLIlG8NalEqCR/Uga80NuP9ne+awYJ7u8/S3X2bG4kBOGeyXajrMVrA/dUzf8aRz51QsxrchK/nMHJqhl2qcwwp+nITvd5tKBN+ZOyrbI57xRu2eXANF+btpbmBRaJ2s0S/SPVH749pTd1MYh1RYNOp56K9NPyfwtoHkBwBqAIwRSc2aKdzNWo84s/BgSWBvRfujEd95zm0Z6FK8SPGURog2OF2vJm1BJr9W+wbFzxW+MF3VhJDqdgfWVrjL3768/frbsXJIcqduFTH0YSL4kxB30TrHAVA/NoSd+oiAZL0EypyFHO/j5q5faCQ2p4Ya8tHHwFjL5j6qLI4qpgo/aWIYXcd+djzB70XfKvlbfdt52FT8M3FrllQUQnGe4+rS3mk3iKQWrp9rbuFk/Yenl/YX7qwvJrTM6XbN/THAMEZourgZOTy4JNRt6powPUdimDvBaFu4mACkLRTzNNPubupoJ4BV/uxnKDmEu4zbO3e0F+IT327ckdlfFsnwKx+DtP2b09E1jLP3upnn8qg=
+  - secure: X9bk5V+DMAYjbxx7PArMUqDegxlMNCW629S/d1OEvPceq6x2ymzx8pVL+RCRELv6x+LfE38aqOloHtHXTk3VQRPkpih+628fa94YnGw7D5wy0mMjGR+9YQvi2k2nl1nJOR/JZirTj6CLFsfEuL2djvbUaSkdhjkzUYSs7pT7oWMiQ/oXFmElPgDO3fMpYoW/F4sONim0wOa622McwyCFYPpp8WX7GMSNTgPZqUeFnFNlEWFxP7pWtblzBcQ5XlznRiNEeflHf96l98Ws1Y0OxFCL3tfjSxxnPq6ZCAnWCGVnupgWzw0XVpbIVxnVzhTwVWSri0e/iTESb0/9lR6pYjw9NIhxN0TjMb+f05zfuxpu3XioC3fX9kMBtGO77anB57SdKzUuHGFfIPsF4eAeaPcEIC9JJbkig7FShrKdADw0PR2MKxR9JdqT/YSTGwMoQlMCeNtVzL5VqAq55KiEhUWTvaUTXN6qjvXWOs/El23+2+3sMaGuXqcfxCXe+t0574zuuVHIPQy1a2UEwMX86Z2/lKKsVm6HgzZ4tNtUYZihI4kuFTcpNukDqsWb2WAym9v66LSDeO7tmiDUWLjBBn8Nelp4faLz5A2Lt/PwzHmVqgO4nhRn9wvGj0vdDP969++ZfIihf77ulyKP9tFaQL4TjzFazqR8JZxFsWySXCE=
