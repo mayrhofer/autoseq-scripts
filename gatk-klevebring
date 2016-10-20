@@ -1,3 +1,3 @@
 #!/bin/bash
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-exec java -Xmx15g -jar ${DIR}/GenomeAnalysisTK-Klevebring.jar "$@"
+exec java -Xmx15g -jar ${DIR}/../share/GenomeAnalysisTK-Klevebring.jar "$@"

@@ -16,6 +16,7 @@ requirements:
 test:
   commands:
     - echo -e "1\t1\t1" | bed_to_regions.py
+    - gatk-klevebring --version
 
 about:
   home: https://github.com/dakl/autoseq-scripts

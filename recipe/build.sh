@@ -1,6 +1,4 @@
-FILES=( GenomeAnalysisTK-3.5.jar \ \
-                GenomeAnalysisTK-Klevebring.jar \
-        alasccaCNA.R \
+FILES=( alasccaCNA.R \
         bed_to_regions.py \
         cnvgtf2bed.py \
         filter_erroneus_alt.py \
@@ -17,6 +15,18 @@ FILES=( GenomeAnalysisTK-3.5.jar \ \
         vcf_add_sample.py \
         vcfsorter.pl \
         )
+
+JARS=(GenomeAnalysisTK-3.5.jar \
+      GenomeAnalysisTK-Klevebring.jar
+      )
+
+mkdir -p $PREFIX/share
+mkdir -p $PREFIX/bin
+
+for J in ${JARS[@]}; do
+  cp $J $PREFIX/share/$J
+done
+
 
 for F in ${FILES[@]}; do
   cp $F $PREFIX/bin/$F
