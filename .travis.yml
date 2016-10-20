@@ -1,22 +1,23 @@
 language: python
 python:
-- 2.7
+  - 2.7
 before_install:
-- echo "127.0.1.1 "`hostname` | sudo tee /etc/hosts
-- CONDA_INST=$HOME/miniconda2
-- echo -n "Downloading conda... "
-- wget http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh
-- echo "Done!"
-- bash Miniconda-latest-Linux-x86_64.sh -b -p $CONDA_INST -f
-- export PATH=$CONDA_INST/bin:$PATH
-- conda config --set always_yes yes --set changeps1 no
-- conda info -a
-- conda install conda-build anaconda-client
+  - echo "127.0.1.1 "`hostname` | sudo tee /etc/hosts
+  - CONDA_INST=$HOME/miniconda2
+  - echo -n "Downloading conda... "
+  - wget http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh
+  - echo "Done!"
+  - bash Miniconda-latest-Linux-x86_64.sh -b -p $CONDA_INST -f
+  - export PATH=$CONDA_INST/bin:$PATH
+  - conda config --set always_yes yes --set changeps1 no
+  - conda info -a
+  - conda install conda-build anaconda-client
 script: echo -e "1\t1\t1" | python bed_to_regions.py
 after_success:
-- conda config --set anaconda_upload yes
-- anaconda login --username $ANACONDA_USER --password $ANACONDA_PWD
-- conda build recipe/
+  - conda config --set anaconda_upload no
+  - anaconda login --username $ANACONDA_USER --password $ANACONDA_PWD
+  - conda build recipe/
+  - anaconda upload --force ~/miniconda2/conda-bld/linux-64/autoseq-scripts-1.0-py27_0.tar.bz2
 env:
   global:
   - secure: KFehgz3hWOc+MzKrrIwWEUAqG0HgbRkCU60SgBrUm0BXl4uXvy1eXGyANsn1eLZ8tyVy5tEpqra8F6UHQkyrDUkkRA+WOy5kCDeOBDlX9ugd7tbba0qet27nx58p3c5uiHcCS0zrRkE0rDNsLjVzA6b8BANQHbo7MnZR+gAmcTCqY/JPHWYszv/ocH2+Pdh9UsZRE6axjHqQdy61I3BNK+0t44pgUZvQnQRR2w7exYxaIdHrS3u8jopveYu/0o7uqW7VGeCiYHRlamgfcliUZTfh38nD6LWd83au7XfBZFQKg3M9MLQLSexy3jR2es0o9sjkgTMTEYFjZufpSA00+A72waVafwycm278Gm5YLPT0cgHts/Wk1MIc6Zrjq9vc+8OkEEkL/Lbxdbg1jY+Rsg0q2DSgpMbfcGdyoSW1gBBjS8gwx5vDF0GahQ5ZC8tkcY6zpRd8mjW3zmQCMyUxETDjgeFyjHsBZeBdbaiEpY1ybdGOf+dAINeBUJf5L8IF7XMTCnKytlMmyssCuzuN1MMEXVyVSQPl8KziXdu4S/YM2bMtf8Qhbvcr10REhwPUFXG6m6QO3ErtSTC8/Qi9uCCcca3xMa78raBHVosveL9/atwrr8V/58KuiwOuzjl9HKuL1eQ0vt3RDxNLTDukxTpne0oA54WBYJ/BevXezlU=
