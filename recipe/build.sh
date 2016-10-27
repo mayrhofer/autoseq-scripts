@@ -20,11 +20,10 @@ JARS=(GenomeAnalysisTK-3.5.jar \
       GenomeAnalysisTK-Klevebring.jar
       )
 
-mkdir -p $PREFIX/share
 mkdir -p $PREFIX/bin
 
 for J in ${JARS[@]}; do
-  cp $J $PREFIX/share/$J
+  cp $J $PREFIX/bin/$J
 done
 
 
