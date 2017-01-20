@@ -14,8 +14,9 @@ args <- rbind(c("cnr", "b", 1, "character", "bin file from CNVkit"),
               c("json.cna", "o", 1, "character", "CNA output json file"),
               c("json.purity", "t", 1, "character", "purity output json file"),
               #c("genes.genePred", "g", 1, "character", "ensemble genePred file"),
-              c("chrsizes", "c", 1, "character", "chromosome sizes file"),
-              c("snptable", "x", 2, "character", "SNP table Rdata file"))
+              c("chrsizes", "c", 1, "character", "chromosome sizes file")#,
+              #c("snptable", "x", 2, "character", "SNP table Rdata file")
+              )
 
 
 opts <- getopt(args)
@@ -48,7 +49,14 @@ if(is.null(opts$chrsizes)){
 ##############################
 
 
-# setup
+ ######  ######## ######## ##     ## ########  
+##    ## ##          ##    ##     ## ##     ## 
+##       ##          ##    ##     ## ##     ## 
+ ######  ######      ##    ##     ## ########  
+      ## ##          ##    ##     ## ##        
+##    ## ##          ##    ##     ## ##        
+ ######  ########    ##     #######  ##        
+
 library(data.table)
 library(VariantAnnotation)
 library(RJSONIO)
@@ -56,19 +64,19 @@ writeJson=TRUE
 
 ## Settings / Thresholds
 # PTEN copy number
-MIN.TCOV.TO.REPORT.PTEN.CNA=25
-
+min_tcov_to_report_PTEN_cna=25
 
 # Purity estimates
-MIN.AF.TO.USE.FOR.PURITY=0.04
-MIN.MUTS.TO.CALCULATE.PURITY=3
-MEDIAN.AF.REQ.FOR.OK.PURITY=0.1
+min_AF_to_use_for_purity=0.04
 
-## Load snp positions used to indicate contamination (snpTable)
-if (exists('opts$snptable')) load(opts$snptable)
-if (!exists('snpTable')) try( {
-  load('/nfs(home/marmay/snpTable.Rdata')
-}, silent=T)
+min_muts_to_estimate_purity=3
+median_AF_req_for_ok_purity=0.1
+
+# ## Load snp positions used to indicate contamination (snpTable)
+# if (exists('opts$snptable')) load(opts$snptable)
+# if (!exists('snpTable')) try( {
+#   load('/nfs(home/marmay/snpTable.Rdata')
+# }, silent=T)
 
 
 ## Read and modify chromosome lengths for plot
@@ -121,6 +129,14 @@ pten=structure(list(start = c(89623194, 89623861, 89653781, 89685269,
 #                class = "data.frame", row.names = c(NA,-5L))
 
 
+ ######  ##    ## ##     ## ##    ## #### ######## 
+##    ## ###   ## ##     ## ##   ##   ##     ##    
+##       ####  ## ##     ## ##  ##    ##     ##    
+##       ## ## ## ##     ## #####     ##     ##    
+##       ##  ####  ##   ##  ##  ##    ##     ##    
+##    ## ##   ###   ## ##   ##   ##   ##     ##    
+ ######  ##    ##    ###    ##    ## ####    ##    
+
 ## Read cnvKit segments and bins
 segments <- fread(opts$cns,stringsAsFactors = F)
 bins <- fread(opts$cnr,stringsAsFactors = F)
@@ -164,21 +180,20 @@ for (i in 1:nrow(segments)) {
   bins$segmented[ix] <- segments$log2[i] <- s
 }
 
-
-# Smoothed bin values
-# bins$smoothed=NA
-# kernel <- c(dnorm(seq(0, 3, length.out=40)))
-# kernel <- c(kernel, rep(0, nrow(bins) - 2*length(kernel) + 1), rev(kernel[-1]))
-# kernel <- kernel / sum(kernel)
-# bins$smoothed <- Re(convolve(bins$log2, kernel))
 bins$pch=1
 bins$pch[bins$gene=='Background']=16
 bins$col='black'
 bins$col[bins$gene=='Background']='grey'
 
 
+ ######  ##    ## ########   ######  
+##    ## ###   ## ##     ## ##    ## 
+##       ####  ## ##     ## ##       
+ ######  ## ## ## ########   ######  
+      ## ##  #### ##              ## 
+##    ## ##   ### ##        ##    ## 
+ ######  ##    ## ##         ######  
 
-### Germline SNPs
 vcf <- readVcf(opts$germlinevcf,genome = "GRCh37")
 g <- geno(vcf)
 chr <- pos <- rownames(g$DP)
@@ -234,7 +249,15 @@ if (!is.null(alf)) if( ! all(is.na(alf$chromosome)) ) {
   }
 }
 
-## Somatic variants
+
+##     ## ##     ## ########    ###    ######## ####  #######  ##    ##  ######  
+###   ### ##     ##    ##      ## ##      ##     ##  ##     ## ###   ## ##    ## 
+#### #### ##     ##    ##     ##   ##     ##     ##  ##     ## ####  ## ##       
+## ### ## ##     ##    ##    ##     ##    ##     ##  ##     ## ## ## ##  ######  
+##     ## ##     ##    ##    #########    ##     ##  ##     ## ##  ####       ## 
+##     ## ##     ##    ##    ##     ##    ##     ##  ##     ## ##   ### ##    ## 
+##     ##  #######     ##    ##     ##    ##    ####  #######  ##    ##  ######  
+
 vcf2 <- readVcf(opts$somaticvcf,genome = "GRCh37")
 g <- geno(vcf2)
 salf <- data.frame(); if (length(g)>0) { # if there are any somatic mutations...
@@ -321,6 +344,16 @@ salf <- data.frame(); if (length(g)>0) { # if there are any somatic mutations...
   salf$mut=rownames(g$GT)
 } #end somatic mutations
 
+
+
+########  ######## ######## ##    ##     ######  ##    ##    ###    
+##     ##    ##    ##       ###   ##    ##    ## ###   ##   ## ##   
+##     ##    ##    ##       ####  ##    ##       ####  ##  ##   ##  
+########     ##    ######   ## ## ##    ##       ## ## ## ##     ## 
+##           ##    ##       ##  ####    ##       ##  #### ######### 
+##           ##    ##       ##   ###    ##    ## ##   ### ##     ## 
+##           ##    ######## ##    ##     ######  ##    ## ##     ## 
+
 ## Process CNA results to file:
 # assemble CNA results first
 # Starting with PTEN binned values
@@ -402,39 +435,76 @@ if (!is.null(alf)) {
 if (is.na(pten.loss)) pten.loss=FALSE
 if (is.na(pten.loh)) pten.loh=FALSE
 
+# set PTEN call for Json file
 ptencall='NOCALL'
-
 if (seg.pten.hom.loss|pten.hom.loss) ptencall='HOMLOSS'
 if (pten.loh|pten.loss) ptencall='HETLOSS_or_LOH'
-# but if tumor coverage is bad (<MIN.TCOV.TO.REPORT.PTEN.CNA), report NOCALL regardless:
-if (!is.null(alf)) if (median(alf$td,na.rm=T)<MIN.TCOV.TO.REPORT.PTEN.CNA) ptencall='NOCALL'
+# but if tumor coverage is bad (<min_tcov_to_report_PTEN_cna), report NOCALL regardless:
+if (!is.null(alf)) if (median(alf$td,na.rm=T)<min_tcov_to_report_PTEN_cna) ptencall='NOCALL'
 
+# List to put in Json file
 CNAlist=list(name='PTEN', call=ptencall, ENSG='ENSG00000171862', ENST='ENST00000371953')
 
 # write to JSON
 exportJson <- toJSON(CNAlist) #<--------- This json is only CNA 
 if (writeJson) write(exportJson, opts$json.cna)
 
-# purity estimates
-call='NA'; af=NA
+
+
+########  ##     ## ########  #### ######## ##    ## 
+##     ## ##     ## ##     ##  ##     ##     ##  ##  
+##     ## ##     ## ##     ##  ##     ##      ####   
+########  ##     ## ########   ##     ##       ##    
+##        ##     ## ##   ##    ##     ##       ##    
+##        ##     ## ##    ##   ##     ##       ##    
+##         #######  ##     ## ####    ##       ##    
+
+
+# purity estimate from mutation allele frequencies
+purity.call='NA'; af=NA
 try( {
-  ix=salf$t>=MIN.AF.TO.USE.FOR.PURITY # use only MIN.AF.TO.USE.FOR.PURITY+ mutations
+  ix=salf$t>=min_AF_to_use_for_purity # use only min_AF_to_use_for_purity+ mutations
   # male X/Y mutations come at higher AF. Exclude from calculation if male:
   if (sum(alf$chromosome %in% c('X','Y'))<50) ix = ix & !salf$chromosome %in% c('X','Y')
   af=salf$t[ix]
-  if (length(af)>=MIN.MUTS.TO.CALCULATE.PURITY) if (median(af)>=MEDIAN.AF.REQ.FOR.OK.PURITY) call='OK'
+  if (length(af)>=min_muts_to_estimate_purity) if (median(af)>=median_AF_req_for_ok_purity) purity.call='OK'
 },silent=T)
+
+# sometimes CNAs may indicate ok purity. if so, it overrules the mutation-based (purity.call).
+## first, require good T coverage ≥100 to consider CNA-based purity
+## second, require at least 2 automsomal segments ≥ 10MB and ≥10% shift in DNA abundance
+## from genome median (equiv to 20% purity and near diploid) (simplified: ±0.15 logratio)
+ix=segments$chromosome %in% as.character(1:22) & segments$end-segments$start >= 10e6 & abs(segments$log2) >= 0.15
+t=0; try( {# median coverage of at least 1000 snps
+  if (nrow(alf)>1000)
+    t=median(alf$td,na.rm=T)
+}, silent=T)
+# cna purity ok if 2+ segments ≥ ±0.15 and coverage≥100
+cna.purity='LOW/NA'; if (sum(ix)>=2 & t>=100) { 
+  cna.purity='OK'
+  purity.call='OK'
+}
+
 
 purity=list(
   somatic.mutations=length(af[!is.na(af)]),
   median.allelefreq=median(af,na.rm = T),
-  purity.call=call
+  cna.purity=cna.purity,
+  purity.call=purity.call
 )
 
 # write to JSON
 exportJson <- toJSON(purity) #<--------- This json is only purity
 if (writeJson) write(exportJson, opts$json.purity)
 
+
+######## ########     ###    ##    ## ##    ## ######## ##    ## ########  ##        #######  ######## 
+##       ##     ##   ## ##   ###   ## ##   ##  ##       ###   ## ##     ## ##       ##     ##    ##    
+##       ##     ##  ##   ##  ####  ## ##  ##   ##       ####  ## ##     ## ##       ##     ##    ##    
+######   ########  ##     ## ## ## ## #####    ######   ## ## ## ########  ##       ##     ##    ##    
+##       ##   ##   ######### ##  #### ##  ##   ##       ##  #### ##        ##       ##     ##    ##    
+##       ##    ##  ##     ## ##   ### ##   ##  ##       ##   ### ##        ##       ##     ##    ##    
+##       ##     ## ##     ## ##    ## ##    ## ######## ##    ## ##        ########  #######     ##    
 
 
 #Screen configuration overview
@@ -465,14 +535,13 @@ try( {
   split.screen(figs=c(4,6),4)
   
   
-  
-  # ____       _   _   _
-  #/ ___|  ___| |_| |_(_)_ __   __ _ ___
-  #\___ \ / _ \ __| __| | '_ \ / _` / __|
-  # ___) |  __/ |_| |_| | | | | (_| \__ \
-  #|____/ \___|\__|\__|_|_| |_|\__, |___/
-  #                            |___/
-  #Settings
+  ########  ##        #######  ########     ######  ######## ######## ######## #### ##    ##  ######    ######  
+  ##     ## ##       ##     ##    ##       ##    ## ##          ##       ##     ##  ###   ## ##    ##  ##    ## 
+  ##     ## ##       ##     ##    ##       ##       ##          ##       ##     ##  ####  ## ##        ##       
+  ########  ##       ##     ##    ##        ######  ######      ##       ##     ##  ## ## ## ##   ####  ######  
+  ##        ##       ##     ##    ##             ## ##          ##       ##     ##  ##  #### ##    ##        ## 
+  ##        ##       ##     ##    ##       ##    ## ##          ##       ##     ##  ##   ### ##    ##  ##    ## 
+  ##        ########  #######     ##        ######  ########    ##       ##    #### ##    ##  ######    ######  
   
   screen(1)
   # Sample name and QC
@@ -494,6 +563,7 @@ try( {
                 '  SNPcov:',snpcov,
                 '  MAPD:',paste(mapd1,mapd2,sep='/'),
                 '  Median Somatic AF:',paste(simplePur,'%',sep=''),
+                '  CNA-purity:',purity$cna.purity,
                 '  PurityEst:', purity$purity.call),
           3,padj=-4.5,adj=1,cex=0.75)
   },silent=T)
@@ -512,14 +582,13 @@ try( {
   
   
   
-  
-  #                                ____
-  # ___  ___ _ __ ___  ___ _ __   | ___|
-  #/ __|/ __| '__/ _ \/ _ \ '_ \  |___ \
-  #\__ \ (__| | |  __/  __/ | | |  ___) |
-  #|___/\___|_|  \___|\___|_| |_| |____/
-  #
-  #screen 5
+   ######   ######  ########  ######## ######## ##    ##          ######## 
+  ##    ## ##    ## ##     ## ##       ##       ###   ##          ##       
+  ##       ##       ##     ## ##       ##       ####  ##          ##       
+   ######  ##       ########  ######   ######   ## ## ##          #######  
+        ## ##       ##   ##   ##       ##       ##  ####                ## 
+  ##    ## ##    ## ##    ##  ##       ##       ##   ###          ##    ## 
+   ######   ######  ##     ## ######## ######## ##    ##           ######  
   
   screen(5)
   #plot snp cov vs alf
@@ -537,10 +606,10 @@ try( {
     points(alf$td,alf$t,cex=0.3,col='#00000080',xlim=xlim,ylim=ylim,pch=16,lwd=lwd)
     points(alf$nd,alf$n,cex=0.1,col='#60606080',xlim=xlim,ylim=ylim,pch=3,lwd=lwd)
     scol=rep('#C00000CC',nrow(salf))
-    if (exists('snpTable')) { 
-      ix=paste(salf[,1],salf[,2]) %in% names(snpTable)[snpTable>10]
-      scol[ix]='#0000C0CC'
-    }
+    # if (exists('snpTable')) { 
+    #   ix=paste(salf[,1],salf[,2]) %in% names(snpTable)[snpTable>10]
+    #   scol[ix]='#0000C0CC'
+    # }
     points(salf$t.totreads,salf$t,cex=0.4,col=scol,xlim=xlim,ylim=ylim,pch=salf$pch,lwd=lwd)
     segments(x0=median(alf$td,na.rm = T),y0=0,x1=median(alf$td,na.rm = T),y1=1,col='#00000080',lwd=lwd,lty=3)
     segments(x0=median(alf$nd,na.rm = T),y0=0,x1=median(alf$nd,na.rm = T),y1=1,col='#7070FF80',lwd=lwd,lty=3)
@@ -549,13 +618,15 @@ try( {
     
   }, silent=T)
   
-  #                                 __
-  # ___  ___ _ __ ___  ___ _ __    / /_
-  #/ __|/ __| '__/ _ \/ _ \ '_ \  | '_ \
-  #\__ \ (__| | |  __/  __/ | | | | (_) |
-  #|___/\___|_|  \___|\___|_| |_|  \___/
-  #
-  #screen 6
+
+   ######   ######  ########  ######## ######## ##    ##           #######  
+  ##    ## ##    ## ##     ## ##       ##       ###   ##          ##     ## 
+  ##       ##       ##     ## ##       ##       ####  ##          ##        
+   ######  ##       ########  ######   ######   ## ## ##          ########  
+        ## ##       ##   ##   ##       ##       ##  ####          ##     ## 
+  ##    ## ##    ## ##    ##  ##       ##       ##   ###          ##     ## 
+   ######   ######  ##     ## ######## ######## ##    ##           #######    
+  
   screen(6)
   try( {
     #plot PTEN only.
@@ -596,13 +667,15 @@ try( {
     }
     
   }, silent=T)
-  #                                _  _
-  # ___  ___ _ __ ___  ___ _ __   | || |
-  #/ __|/ __| '__/ _ \/ _ \ '_ \  | || |_
-  #\__ \ (__| | |  __/  __/ | | | |__   _|
-  #|___/\___|_|  \___|\___|_| |_|    |_|
-  #
-  #screen 4
+ 
+   ######   ######  ########  ######## ######## ##    ##          ##        
+  ##    ## ##    ## ##     ## ##       ##       ###   ##          ##    ##  
+  ##       ##       ##     ## ##       ##       ####  ##          ##    ##  
+   ######  ##       ########  ######   ######   ## ## ##          ##    ##  
+        ## ##       ##   ##   ##       ##       ##  ####          ######### 
+  ##    ## ##    ## ##    ##  ##       ##       ##   ###                ##  
+   ######   ######  ##     ## ######## ######## ##    ##                ##  
+  
   #allelefreq vs logR
   
   screen(4)
@@ -675,13 +748,15 @@ try( {
   }, silent=T)
   
   
-  #                                _ _
-  # ___  ___ _ __ ___  ___ _ __   / / |
-  #/ __|/ __| '__/ _ \/ _ \ '_ \  | | |
-  #\__ \ (__| | |  __/  __/ | | | | | |
-  #|___/\___|_|  \___|\___|_| |_| |_|_|
-  #
-  #screen 11  <- modified, now 9
+
+   ######   ######  ########  ######## ######## ##    ##           #######  
+  ##    ## ##    ## ##     ## ##       ##       ###   ##          ##     ## 
+  ##       ##       ##     ## ##       ##       ####  ##          ##     ## 
+   ######  ##       ########  ######   ######   ## ## ##           ######## 
+        ## ##       ##   ##   ##       ##       ##  ####                 ## 
+  ##    ## ##    ## ##    ##  ##       ##       ##   ###          ##     ## 
+   ######   ######  ##     ## ######## ######## ##    ##           #######  
+  
   #LogR plot
   screen(9)
   try( {
@@ -769,13 +844,15 @@ try( {
   }, silent=T)
   
   
-  #                                _  ___
-  # ___  ___ _ __ ___  ___ _ __   / |/ _ \
-  #/ __|/ __| '__/ _ \/ _ \ '_ \  | | | | |
-  #\__ \ (__| | |  __/  __/ | | | | | |_| |
-  #|___/\___|_|  \___|\___|_| |_| |_|\___/
-  #
-  #screen 10 <- modified, now 8
+
+   ######   ######  ########  ######## ######## ##    ##           #######  
+  ##    ## ##    ## ##     ## ##       ##       ###   ##          ##     ## 
+  ##       ##       ##     ## ##       ##       ####  ##          ##     ## 
+   ######  ##       ########  ######   ######   ## ## ##           #######  
+        ## ##       ##   ##   ##       ##       ##  ####          ##     ## 
+  ##    ## ##    ## ##    ##  ##       ##       ##   ###          ##     ## 
+   ######   ######  ##     ## ######## ######## ##    ##           #######  
+  
   #Genes
   screen(8)
   try( {
@@ -797,13 +874,14 @@ try( {
     
   }, silent=T)
   
-  #                                 ___
-  # ___  ___ _ __ ___  ___ _ __    / _ \
-  #/ __|/ __| '__/ _ \/ _ \ '_ \  | (_) |
-  #\__ \ (__| | |  __/  __/ | | |  \__, |
-  #|___/\___|_|  \___|\___|_| |_|    /_/
-  #
-  #screen 9 <- modified, now 7
+
+   ######   ######  ########  ######## ######## ##    ##          ######## 
+  ##    ## ##    ## ##     ## ##       ##       ###   ##          ##    ## 
+  ##       ##       ##     ## ##       ##       ####  ##              ##   
+   ######  ##       ########  ######   ######   ## ## ##             ##    
+        ## ##       ##   ##   ##       ##       ##  ####            ##     
+  ##    ## ##    ## ##    ##  ##       ##       ##   ###            ##     
+   ######   ######  ##     ## ######## ######## ##    ##            ##     
   
   # BAF plot
   screen(7)
@@ -859,10 +937,10 @@ try( {
     
     ## Add somatic mutations
     scol=rep('#C00000CC',nrow(salf))
-    if (exists('snpTable')) { 
-      ix=paste(salf[,1],salf[,2]) %in% names(snpTable)[snpTable>10]
-      scol[ix]='#0000C0CC'
-    }
+    # if (exists('snpTable')) { 
+    #   ix=paste(salf[,1],salf[,2]) %in% names(snpTable)[snpTable>10]
+    #   scol[ix]='#0000C0CC'
+    # }
     points(salf$cumstart,salf$t,
            pch=salf$pch,
            cex=0.6,
