@@ -97,24 +97,27 @@ chrsizes$mid <- mids_list[match(chrsizes$chr, mids_chrnames)]
 # load('~/Dropbox/refseq.genes.Rdata')
 # genes=data.frame(label=as.character(refseq.genelist$name2),chromosome=substr(refseq.genelist$chrom,4,6),start=refseq.genelist$txStart,end=refseq.genelist$txEnd,stringsAsFactors = F)
 # genes=genes[order(genes$label),]
-# genes=genes[genes$label %in% c('BRAF','KRAS','NRAS','PIK3CA','PIK3R1','PTEN','IGF2','APC','SMAD4','TP53','FBXW7','TCF7L2','ARID1A'),]
+# genes=genes[genes$label %in% c('BRAF','KRAS','NRAS','PIK3CA','PIK3R1','PTEN','IGF2','APC','TP53','MLH1','MLH3','MSH2','MSH3','MSH6','PMS2'),]
 # d=genes$label[-1]==rev(rev(genes$label)[-1])
 # genes=genes[c(T,!d),]
-# genes$cumstart <- genes$start + chrsizes$cumstart[match(genes$chromosome,chrsizes$chr)]
-# genes$cumend <- genes$end + chrsizes$cumstart[match(genes$chromosome,chrsizes$chr)]
 
-## Genes to highlight
-genes=structure(list(label = c("APC", "ARID1A", "BRAF", "FBXW7", "IGF2", 
-                               "KRAS", "NRAS", "PIK3CA", "PIK3R1", "PTEN", "SMAD4", "TCF7L2", 
-                               "TP53"), chromosome = c("5", "1", "7", "4", "11", "12", "1", 
-                                                       "3", "5", "10", "18", "10", "17"), 
-                     start = c(112043201L, 27022521L, 140433812L, 153332311L, 2150346L, 25358179L, 115247084L, 178866310L, 67584251L, 89623194L, 48556582L, 114710008L, 7571719L), 
-                     end = c(112181936L, 27108601L, 140624564L, 153456393L, 2160204L, 25403854L, 115259515L, 178952497L, 67597649L, 89728532L, 48611411L, 114927436L, 7590868L), 
-                     cumstart = c(993669901, 27022521, 1374090839, 843804735, 1818058236, 1976272585, 115247084, 671316304, 949210951, 1769996337, 2629923656, 1795083151, 2507743583), 
-                     cumend = c(993808636, 27108601, 1374281591, 843928817, 1818068094, 1976318260, 115259515, 671402491, 949224349, 1770101675, 2629978485, 1795300579, 2507762732)), 
-                .Names = c("label","chromosome", "start", "end", "cumstart", "cumend"), 
-                row.names = c(11203L, 1777L, 14795L, 9757L, 24708L, 27510L, 2723L, 7658L, 11731L, 22654L, 
-                              36673L, 22765L, 34523L), class = "data.frame")
+genes=structure(list(label = c("APC", "BRAF", "IGF2", "KRAS", "MLH1", 
+                               "MLH3", "MSH2", "MSH3", "MSH6", "NRAS", "PIK3CA", "PIK3R1", "PMS2", 
+                               "PTEN", "TP53"), chromosome = c("5", "7", "11", "12", "3", "14", 
+                                                               "2", "5", "2", "1", "3", "5", "7", "10", "17"), start = c(112043201L, 
+                                                                                                                         140433812L, 2150346L, 25358179L, 37034840L, 75480466L, 47630205L, 
+                                                                                                                         79950466L, 48010220L, 115247084L, 178866310L, 67584251L, 6012869L, 
+                                                                                                                         89623194L, 7571719L), end = c(112181936L, 140624564L, 2160204L, 
+                                                                                                                                                       25403854L, 37092337L, 75518235L, 47710367L, 80172634L, 48034092L, 
+                                                                                                                                                       115259515L, 178952497L, 67597649L, 6048737L, 89728532L, 7590868L
+                                                                                                                         )), .Names = c("label", "chromosome", "start", "end"), row.names = c(11203L, 
+                                                                                                                                                                                              14795L, 24708L, 27510L, 7970L, 29362L, 4622L, 11150L, 5591L, 
+                                                                                                                                                                                              2723L, 7658L, 11731L, 14834L, 22654L, 34523L), class = "data.frame")
+
+genes$cumstart <- genes$start + chrsizes$cumstart[match(genes$chromosome,chrsizes$chr)]
+genes$cumend <- genes$end + chrsizes$cumstart[match(genes$chromosome,chrsizes$chr)]
+
+
 
 ## PTEN exons hard coded
 pten=structure(list(start = c(89623194, 89623861, 89653781, 89685269,
@@ -304,7 +307,9 @@ salf <- data.frame(); if (length(g)>0) { # if there are any somatic mutations...
   vep=info(vcf2)$CSQ
   
   alasccaTX=c('ENST00000288602','ENST00000256078','ENST00000369535',
-              'ENST00000371953','ENST00000521381','ENST00000263967')
+              'ENST00000371953','ENST00000521381','ENST00000263967',  # alascca genes
+              'ENST00000231790','ENST00000380968','ENST00000233146',
+              'ENST00000265081','ENST00000234420','ENST00000265849')  # MSI genes
   
   ## This loop creates a new table "temp" for each mutation. 
   ## (Prev. appended to "table" but "table" was not used further.). 
@@ -461,7 +466,7 @@ if (writeJson) write(exportJson, opts$json.cna)
 
 
 # purity estimate from mutation allele frequencies
-purity.call='NA'; af=NA
+purity.call='LOW'; af=NA
 try( {
   ix=salf$t>=min_AF_to_use_for_purity # use only min_AF_to_use_for_purity+ mutations
   # male X/Y mutations come at higher AF. Exclude from calculation if male:
