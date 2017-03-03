@@ -70,7 +70,7 @@ min_tcov_to_report_PTEN_cna=25
 min_AF_to_use_for_purity=0.04
 
 min_muts_to_estimate_purity=3
-median_AF_req_for_ok_purity=0.1
+median_AF_req_for_ok_purity=0.10
 
 # ## Load snp positions used to indicate contamination (snpTable)
 # if (exists('opts$snptable')) load(opts$snptable)
@@ -113,7 +113,7 @@ genes=structure(list(label = c("APC", "BRAF", "IGF2", "KRAS", "MLH1",
                                                                                                                          )), .Names = c("label", "chromosome", "start", "end"), row.names = c(11203L, 
                                                                                                                                                                                               14795L, 24708L, 27510L, 7970L, 29362L, 4622L, 11150L, 5591L, 
                                                                                                                                                                                               2723L, 7658L, 11731L, 14834L, 22654L, 34523L), class = "data.frame")
-
+genes=genes[genes$label %in% c("APC", "BRAF", "KRAS","NRAS", "PIK3CA", "PIK3R1","PTEN","TP53"),]
 genes$cumstart <- genes$start + chrsizes$cumstart[match(genes$chromosome,chrsizes$chr)]
 genes$cumend <- genes$end + chrsizes$cumstart[match(genes$chromosome,chrsizes$chr)]
 
@@ -307,9 +307,9 @@ salf <- data.frame(); if (length(g)>0) { # if there are any somatic mutations...
   vep=info(vcf2)$CSQ
   
   alasccaTX=c('ENST00000288602','ENST00000256078','ENST00000369535',
-              'ENST00000371953','ENST00000521381','ENST00000263967',  # alascca genes
-              'ENST00000231790','ENST00000380968','ENST00000233146',
-              'ENST00000265081','ENST00000234420','ENST00000265849')  # MSI genes
+              'ENST00000371953','ENST00000521381','ENST00000263967')  # alascca genes
+              #'ENST00000231790','ENST00000380968','ENST00000233146',
+              #'ENST00000265081','ENST00000234420','ENST00000265849')  # MSI genes
   
   ## This loop creates a new table "temp" for each mutation. 
   ## (Prev. appended to "table" but "table" was not used further.). 
@@ -466,9 +466,9 @@ if (writeJson) write(exportJson, opts$json.cna)
 
 
 # purity estimate from mutation allele frequencies
-purity.call='LOW'; af=NA
+purity.call='FAIL'; af=NA
 try( {
-  ix=salf$t>=min_AF_to_use_for_purity # use only min_AF_to_use_for_purity+ mutations
+  ix=salf$t>=min_AF_to_use_for_purity & salf$t.altreads>=6 # use only min_AF_to_use_for_purity+ mutations. also require 6+ reads.
   # male X/Y mutations come at higher AF. Exclude from calculation if male:
   if (sum(alf$chromosome %in% c('X','Y'))<50) ix = ix & !salf$chromosome %in% c('X','Y')
   af=salf$t[ix]
@@ -478,8 +478,8 @@ try( {
 # sometimes CNAs may indicate ok purity. if so, it overrules the mutation-based (purity.call).
 ## first, require good T coverage ≥100 to consider CNA-based purity
 ## second, require at least 2 automsomal segments ≥ 10MB and ≥10% shift in DNA abundance
-## from genome median (equiv to 20% purity and near diploid) (simplified: ±0.15 logratio)
-ix=segments$chromosome %in% as.character(1:22) & segments$end-segments$start >= 10e6 & abs(segments$log2) >= 0.15
+## from genome median (equiv to 20% purity and near diploid) (simplified: ±0.2 logratio)
+ix=segments$chromosome %in% as.character(1:22) & segments$end-segments$start >= 10e6 & abs(segments$log2) >= 0.2
 t=0; try( {# median coverage of at least 1000 snps
   if (nrow(alf)>1000)
     t=median(alf$td,na.rm=T)
@@ -497,9 +497,12 @@ purity=list(
   cna.purity=cna.purity,
   purity.call=purity.call
 )
+purity.json=list(
+  CALL=purity.call
+)
 
 # write to JSON
-exportJson <- toJSON(purity) #<--------- This json is only purity
+exportJson <- toJSON(purity.json) #<--------- This json is only purity
 if (writeJson) write(exportJson, opts$json.purity)
 
 
@@ -611,6 +614,7 @@ try( {
     points(alf$td,alf$t,cex=0.3,col='#00000080',xlim=xlim,ylim=ylim,pch=16,lwd=lwd)
     points(alf$nd,alf$n,cex=0.1,col='#60606080',xlim=xlim,ylim=ylim,pch=3,lwd=lwd)
     scol=rep('#C00000CC',nrow(salf))
+    scol[salf$t.altreads<6]='#500000CC'
     # if (exists('snpTable')) { 
     #   ix=paste(salf[,1],salf[,2]) %in% names(snpTable)[snpTable>10]
     #   scol[ix]='#0000C0CC'
@@ -667,8 +671,8 @@ try( {
     # somatic muts
     ix <- salf$chromosome==10
     if (sum(ix)>0) {
-      points(x = salf$start[ix], y = salf$t[ix]-1,pch=salf$pch[ix], cex=0.6, col='#C00000CC')
-      text(x = salf$start[ix],y=-1.25,labels = salf$aa[ix],cex=0.5,srt=90,col='#C00000CC')
+      points(x = salf$start[ix], y = salf$t[ix]-1,pch=salf$pch[ix], cex=0.6, col=scol[ix])
+      text(x = salf$start[ix],y=-1.25,labels = salf$aa[ix],cex=0.5,srt=90,col=scol[ix])
     }
     
   }, silent=T)
@@ -942,6 +946,7 @@ try( {
     
     ## Add somatic mutations
     scol=rep('#C00000CC',nrow(salf))
+    scol[salf$t.altreads<6]='#500000CC'
     # if (exists('snpTable')) { 
     #   ix=paste(salf[,1],salf[,2]) %in% names(snpTable)[snpTable>10]
     #   scol[ix]='#0000C0CC'
@@ -951,7 +956,7 @@ try( {
            cex=0.6,
            col=scol
     )
-    if (nrow(salf)>0) text(x = salf$cumstart,y=salf$t-0.07,labels = salf$aa,cex=0.6,srt=30,col='#C00000CC')
+    if (nrow(salf)>0) text(x = salf$cumstart,y=salf$t-0.07,labels = salf$aa,cex=0.6,srt=30,col=scol)
     
     ## Add a line at median AF
     segments(x0 = 0,x1 = 3e9,y0=purity$median.allelefreq,y1 = purity$median.allelefreq,col='#C0000099',lty=2)
